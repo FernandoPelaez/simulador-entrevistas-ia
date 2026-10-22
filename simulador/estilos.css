@@ -1,0 +1,246 @@
+
+/* Ajustes responsive de la aplicación */
+@media (max-width: 768px) {
+    [data-testid="stAppViewContainer"] .block-container {
+        padding: 1rem 0.9rem 5.5rem;
+    }
+
+    [data-testid="stAppViewContainer"] h1 {
+        font-size: clamp(1.65rem, 6vw, 2.2rem);
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+    }
+
+    [data-testid="stChatMessage"] {
+        padding: 0.75rem;
+    }
+
+    [data-testid="stChatMessage"] p {
+        overflow-wrap: anywhere;
+    }
+}
+
+/* Resumen de resultados */
+.resultado-modal {
+    --acento: #b42318;
+    --fondo: #fff4f2;
+    --borde: #fecdca;
+    color: #18243a;
+    font-family: inherit;
+}
+
+.resultado-modal.aprobado {
+    --acento: #067647;
+    --fondo: #ecfdf3;
+    --borde: #abefc6;
+}
+
+.resultado-modal .resumen-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    background: var(--fondo);
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+}
+
+.resultado-modal .resumen-icono {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 22px;
+}
+
+.resultado-modal .resumen-etiqueta {
+    margin: 0 0 3px;
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #667085;
+}
+
+.resultado-modal h3 {
+    margin: 0 0 3px;
+    font-size: clamp(17px, 3.8vw, 19px);
+    line-height: 1.18;
+    color: #18243a;
+}
+
+.resultado-modal .resumen-descripcion {
+    margin: 0;
+    color: #475467;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.resultado-modal .resumen-resultado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 12px 0 8px;
+}
+
+.resultado-modal .resumen-nota {
+    font-size: 35px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+}
+
+.resultado-modal .resumen-nota span {
+    font-size: 17px;
+    font-weight: 400;
+    color: #667085;
+}
+
+.resultado-modal .resumen-dictamen {
+    color: var(--acento);
+    background: var(--fondo);
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.resultado-modal .resumen-barra {
+    height: 6px;
+    overflow: hidden;
+    background: #e9edf3;
+    border-radius: 20px;
+}
+
+.resultado-modal .resumen-barra > span {
+    display: block;
+    height: 100%;
+    background: var(--acento);
+    border-radius: inherit;
+}
+
+.resultado-modal .resumen-secciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.resultado-modal .resumen-seccion {
+    min-width: 0;
+    padding-top: 11px;
+    border-top: 1px solid #e9edf3;
+}
+
+.resultado-modal .resumen-seccion h4 {
+    margin: 0 0 7px;
+    font-size: 13px;
+    font-weight: 750;
+    color: #18243a;
+}
+
+.resultado-modal ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.resultado-modal li {
+    position: relative;
+    margin: 0 0 7px;
+    padding-left: 13px;
+    color: #475467;
+    font-size: 12px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    line-clamp: 3;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.resultado-modal li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #12b76a;
+}
+
+.resultado-modal .mejoras li::before {
+    background: #f79009;
+}
+
+.resultado-modal .resumen-pie {
+    margin: 7px 0 0;
+    color: #667085;
+    font-size: 11px;
+    text-align: center;
+}
+
+[data-testid="stDialog"] div.stButton > button[kind="primary"] {
+    min-height: 40px;
+    border-radius: 9px;
+}
+
+/* Ajustes para dispositivos móviles */
+@media (max-width: 600px) {
+    .resultado-modal .resumen-cabecera {
+        padding: 10px 11px;
+        gap: 9px;
+    }
+
+    .resultado-modal .resumen-resultado {
+        margin: 10px 0 7px;
+    }
+
+    .resultado-modal .resumen-nota {
+        font-size: 31px;
+    }
+
+    .resultado-modal .resumen-secciones {
+        display: block;
+        margin-top: 10px;
+    }
+
+    .resultado-modal .resumen-seccion {
+        padding-top: 8px;
+        margin-top: 8px;
+    }
+
+    .resultado-modal li {
+        line-clamp: 2;
+        -webkit-line-clamp: 2;
+        margin-bottom: 3px;
+    }
+
+    .resultado-modal li:nth-child(n+2) {
+        display: none;
+    }
+
+    .resultado-modal .resumen-pie {
+        margin-top: 5px;
+    }
+}
+
+/* Ajustes para pantallas de poca altura */
+@media (max-height: 650px) {
+    .resultado-modal li:nth-child(n+2) {
+        display: none;
+    }
+
+    .resultado-modal .resumen-pie {
+        display: none;
+    }
+}
+

@@ -1,8 +1,9 @@
-"""Presentación Streamlit: no contiene reglas de negocio ni prompts."""
+"""Interfaz de Streamlit para el simulador de entrevistas."""
 
 import logging
 import os
 from html import escape
+from pathlib import Path
 
 import streamlit as st
 
@@ -23,6 +24,13 @@ CLAVE_SESION = "simulador_entrevista"
 CLAVE_MODAL = "mostrar_modal_resultado"
 
 
+def _cargar_estilos() -> None:
+    """Aplica los estilos de la interfaz y del modal."""
+    ruta = Path(__file__).with_name("estilos.css")
+    estilos = ruta.read_text(encoding="utf-8")
+    st.markdown(f"<style>{estilos}</style>", unsafe_allow_html=True)
+
+
 def _clave_api() -> str:
     """Obtiene la clave del entorno o de los secretos de Streamlit."""
     clave = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -31,21 +39,41 @@ def _clave_api() -> str:
     try:
         return str(st.secrets.get("GEMINI_API_KEY", "")).strip()
     except Exception:
-        # Streamlit puede fallar si no existe secrets.toml local.
         return ""
 
 
 def _reiniciar() -> None:
-    # El reinicio también descarta cualquier resultado pendiente de mostrar.
     st.session_state.pop("vacante_seleccionada", None)
     st.session_state.pop(CLAVE_MODAL, None)
     st.session_state[CLAVE_SESION] = Entrevista()
 
 
+def _mensaje_error_gemini(error: Exception) -> str | None:
+    """Distingue los errores de la API sin revelar información privada."""
+    codigo = getattr(error, "code", None)
+    if codigo == 503:
+        return (
+            "Gemini no está disponible temporalmente. Tu progreso se conservó; "
+            "puedes reintentar más tarde."
+        )
+    if codigo == 429:
+        return (
+            "Se alcanzó el límite de solicitudes de Gemini. Tu progreso se "
+            "conservó; vuelve a intentarlo cuando se restablezca el acceso."
+        )
+    if codigo in (401, 403):
+        return (
+            "Gemini rechazó el acceso. Revisa la API key y los permisos "
+            "configurados en Streamlit Secrets."
+        )
+    return None
+
+
 def _resolver_operacion(entrevista: Entrevista) -> None:
-    """Procesa la siguiente acción sin duplicar turnos en las recargas."""
+    """Procesa una acción de Gemini conservando el estado ante errores."""
     if entrevista.estado not in ("generando", "validando", "evaluando"):
         return
+
     clave = _clave_api()
     if not clave:
         marcar_error(entrevista)
@@ -69,9 +97,11 @@ def _resolver_operacion(entrevista: Entrevista) -> None:
                 reporte = servicio.evaluar(entrevista.vacante, entrevista.turnos)
                 finalizar(entrevista, reporte)
                 st.session_state[CLAVE_MODAL] = True
-    except Exception:
+    except Exception as error:
         logging.exception("Falló una operación con Gemini")
         marcar_error(entrevista)
+        entrevista.aviso = _mensaje_error_gemini(error) or entrevista.aviso
+
     st.rerun()
 
 
@@ -101,163 +131,9 @@ def _mostrar_reporte(entrevista: Entrevista) -> None:
     )
 
 
-# Diseño del resumen: el reporte completo permanece en la página.
-ESTILOS_MODAL = """
-<style>
-.resultado-modal {
-    --acento: #b42318;
-    --fondo-acento: #fff4f2;
-    --borde-acento: #fecdca;
-    color: #18243a;
-    font-family: inherit;
-}
-.resultado-modal.aprobado {
-    --acento: #067647;
-    --fondo-acento: #ecfdf3;
-    --borde-acento: #abefc6;
-}
-.resultado-modal .resultado-encabezado {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 18px;
-    background: var(--fondo-acento);
-    border: 1px solid var(--borde-acento);
-    border-radius: 14px;
-}
-.resultado-modal .resultado-icono {
-    display: grid;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    flex-shrink: 0;
-    border-radius: 13px;
-    background: #ffffff;
-    font-size: 26px;
-}
-.resultado-modal .resultado-etiqueta {
-    margin: 0 0 4px;
-    color: #667085;
-    font-size: 11px;
-    font-weight: 750;
-    letter-spacing: .09em;
-    text-transform: uppercase;
-}
-.resultado-modal h3 {
-    margin: 0 0 4px;
-    color: #18243a;
-    font-size: 20px;
-    font-weight: 750;
-    line-height: 1.2;
-}
-.resultado-modal .resultado-descripcion {
-    margin: 0;
-    color: #475467;
-    font-size: 13px;
-    line-height: 1.5;
-}
-.resultado-modal .resultado-puntuacion {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin: 20px 0 12px;
-}
-.resultado-modal .resultado-valor {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    line-height: 1;
-}
-.resultado-modal .resultado-valor strong {
-    font-size: 44px;
-    font-weight: 800;
-    letter-spacing: -.06em;
-}
-.resultado-modal .resultado-valor span {
-    font-size: 19px;
-    color: #667085;
-}
-.resultado-modal .resultado-dictamen {
-    padding: 8px 11px;
-    color: var(--acento);
-    background: var(--fondo-acento);
-    border: 1px solid var(--borde-acento);
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: .03em;
-    white-space: nowrap;
-}
-.resultado-modal .resultado-progreso {
-    width: 100%;
-    height: 7px;
-    overflow: hidden;
-    background: #edf0f5;
-    border-radius: 999px;
-}
-.resultado-modal .resultado-progreso span {
-    display: block;
-    height: 100%;
-    background: var(--acento);
-    border-radius: inherit;
-}
-.resultado-modal .resultado-seccion {
-    padding-top: 17px;
-    margin-top: 17px;
-    border-top: 1px solid #e9edf3;
-}
-.resultado-modal .resultado-seccion h4 {
-    margin: 0 0 10px;
-    color: #18243a;
-    font-size: 14px;
-    font-weight: 750;
-}
-.resultado-modal .resultado-seccion ul {
-    padding: 0;
-    margin: 0;
-    list-style: none;
-}
-.resultado-modal .resultado-seccion li {
-    position: relative;
-    margin: 0 0 8px;
-    padding-left: 19px;
-    color: #475467;
-    font-size: 13px;
-    line-height: 1.48;
-    overflow-wrap: anywhere;
-}
-.resultado-modal .resultado-seccion li::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 7px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #12b76a;
-}
-.resultado-modal .resultado-seccion.mejoras li::before {
-    background: #f79009;
-}
-.resultado-modal .resultado-nota {
-    margin: 14px 0 9px;
-    color: #667085;
-    font-size: 12px;
-    text-align: center;
-}
-[data-testid="stDialog"] div.stButton > button[kind="primary"] {
-    height: 44px;
-    border-radius: 10px;
-    font-weight: 650;
-}
-</style>
-"""
-
-
-@st.dialog("Resultado de la entrevista", width="small")
+@st.dialog("Resultado de la entrevista", width="medium")
 def _mostrar_modal_resultado(entrevista: Entrevista) -> None:
-    """Muestra un resumen compacto sin repetir el reporte completo."""
+    """Presenta un resumen sin reemplazar el reporte detallado."""
     reporte = entrevista.reporte
     aprobado = reporte.dictamen == "APROBADO"
     estilo = "aprobado" if aprobado else "no-aprobado"
@@ -268,48 +144,51 @@ def _mostrar_modal_resultado(entrevista: Entrevista) -> None:
         else "No eres apto para el puesto por el momento."
     )
     icono = "🎉" if aprobado else "😂"
-
-    # Se muestran dos puntos por apartado; el reporte conserva todos los detalles.
-    fortalezas = "".join(
-        f"<li>{escape(str(punto))}</li>" for punto in reporte.fortalezas[:2]
-    )
-    mejoras = "".join(
-        f"<li>{escape(str(punto))}</li>" for punto in reporte.areas_mejora[:2]
-    )
     progreso = max(0, min(100, reporte.calificacion * 10))
 
-    st.markdown(ESTILOS_MODAL, unsafe_allow_html=True)
+    # La vista móvil resume un punto por sección; el reporte conserva todos.
+    fortalezas = "".join(
+        f'<li title="{escape(str(texto), quote=True)}">{escape(str(texto))}</li>'
+        for texto in reporte.fortalezas[:2]
+    )
+    mejoras = "".join(
+        f'<li title="{escape(str(texto), quote=True)}">{escape(str(texto))}</li>'
+        for texto in reporte.areas_mejora[:2]
+    )
+
     st.markdown(
         f"""
 <article class="resultado-modal {estilo}">
-  <header class="resultado-encabezado">
-    <div class="resultado-icono" aria-hidden="true">{icono}</div>
+  <header class="resumen-cabecera">
+    <div class="resumen-icono" aria-hidden="true">{icono}</div>
     <div>
-      <p class="resultado-etiqueta">Entrevista finalizada</p>
+      <p class="resumen-etiqueta">Entrevista finalizada</p>
       <h3>{titulo}</h3>
-      <p class="resultado-descripcion">{descripcion}</p>
+      <p class="resumen-descripcion">{descripcion}</p>
     </div>
   </header>
-  <div class="resultado-puntuacion">
+  <div class="resumen-resultado">
     <div>
-      <p class="resultado-etiqueta">Calificación global</p>
-      <div class="resultado-valor"><strong>{reporte.calificacion}</strong><span>/10</span></div>
+      <p class="resumen-etiqueta">Calificación global</p>
+      <div class="resumen-nota">{reporte.calificacion}<span>/10</span></div>
     </div>
-    <span class="resultado-dictamen">{escape(reporte.dictamen)}</span>
+    <span class="resumen-dictamen">{escape(reporte.dictamen)}</span>
   </div>
-  <div class="resultado-progreso" role="progressbar" aria-label="Calificación"
+  <div class="resumen-barra" role="progressbar" aria-label="Calificación"
        aria-valuemin="0" aria-valuemax="10" aria-valuenow="{reporte.calificacion}">
     <span style="width: {progreso}%"></span>
   </div>
-  <section class="resultado-seccion">
-    <h4>Fortalezas detectadas</h4>
-    <ul>{fortalezas}</ul>
-  </section>
-  <section class="resultado-seccion mejoras">
-    <h4>Áreas de mejora</h4>
-    <ul>{mejoras}</ul>
-  </section>
-  <p class="resultado-nota">Consulta el análisis detallado en el reporte completo.</p>
+  <div class="resumen-secciones">
+    <section class="resumen-seccion">
+      <h4>Fortalezas detectadas</h4>
+      <ul>{fortalezas}</ul>
+    </section>
+    <section class="resumen-seccion mejoras">
+      <h4>Áreas de mejora</h4>
+      <ul>{mejoras}</ul>
+    </section>
+  </div>
+  <p class="resumen-pie">Consulta todos los detalles en el reporte completo.</p>
 </article>
         """,
         unsafe_allow_html=True,
@@ -323,6 +202,8 @@ def mostrar_aplicacion() -> None:
     if CLAVE_SESION not in st.session_state:
         _reiniciar()
     entrevista: Entrevista = st.session_state[CLAVE_SESION]
+
+    _cargar_estilos()
 
     with st.sidebar:
         st.header("Configuración")
@@ -377,7 +258,7 @@ def mostrar_aplicacion() -> None:
 
     if entrevista.estado == "finalizada":
         _mostrar_reporte(entrevista)
-        # Solo se abre al completar una evaluación nueva.
+        # El modal aparece una sola vez por evaluación terminada.
         if st.session_state.pop(CLAVE_MODAL, False):
             _mostrar_modal_resultado(entrevista)
         return
